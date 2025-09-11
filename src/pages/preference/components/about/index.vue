@@ -1,0 +1,103 @@
+<script setup lang="ts">
+import { getTauriVersion } from '@tauri-apps/api/app'
+import { emit } from '@tauri-apps/api/event'
+import { appLogDir } from '@tauri-apps/api/path'
+import { writeText } from '@tauri-apps/plugin-clipboard-manager'
+import { openPath, openUrl } from '@tauri-apps/plugin-opener'
+import { arch, platform, version } from '@tauri-apps/plugin-os'
+import { Button, message } from 'ant-design-vue'
+import { onMounted, ref } from 'vue'
+
+import ProList from '@/components/pro-list/index.vue'
+import ProListItem from '@/components/pro-list-item/index.vue'
+import { GITHUB_LINK, LISTEN_KEY } from '@/constants'
+import { useAppStore } from '@/stores/app'
+
+const appStore = useAppStore()
+const logDir = ref('')
+
+onMounted(async () => {
+  logDir.value = await appLogDir()
+})
+
+function handleUpdate() {
+  emit(LISTEN_KEY.UPDATE_APP)
+}
+
+async function copyInfo() {
+  const info = {
+    appName: appStore.name,
+    appVersion: appStore.version,
+    tauriVersion: await getTauriVersion(),
+    platform: platform(),
+    platformArch: arch(),
+    platformVersion: version(),
+  }
+
+  await writeText(JSON.stringify(info, null, 2))
+
+  message.success('复制成功')
+}
+
+function feedbackIssue() {
+  openUrl(`${GITHUB_LINK}/issues/new/choose`)
+}
+</script>
+
+<template>
+  <ProList title="关于软件">
+    <ProListItem
+      :description="`版本：v${appStore.version}`"
+      :title="appStore.name"
+    >
+      <Button
+        type="primary"
+        @click="handleUpdate"
+      >
+        检查更新
+      </Button>
+
+      <template #icon>
+        <div class="b b-color-2 rounded-xl b-solid">
+          <img
+            class="size-12"
+            src="/logo.png"
+          >
+        </div>
+      </template>
+    </ProListItem>
+
+    <ProListItem
+      description="复制软件信息并提供给 Bug Issue。"
+      title="软件信息"
+    >
+      <Button @click="copyInfo">
+        复制
+      </Button>
+    </ProListItem>
+
+    <ProListItem title="开源地址">
+      <Button
+        danger
+        @click="feedbackIssue"
+      >
+        反馈问题
+      </Button>
+
+      <template #description>
+        <a :href="GITHUB_LINK">
+          {{ GITHUB_LINK }}
+        </a>
+      </template>
+    </ProListItem>
+
+    <ProListItem
+      :description="logDir"
+      title="软件日志"
+    >
+      <Button @click="openPath(logDir)">
+        查看日志
+      </Button>
+    </ProListItem>
+  </ProList>
+</template>
